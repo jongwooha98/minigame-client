@@ -8,7 +8,7 @@ import { useEffect, useRef } from 'react';
  * @returns {K | undefined}
  */
 
-export const usePrevProps = <K = any>(value: K) => {
+export const usePrevProps = <K = any>(value: K): K | undefined => {
   const ref = useRef<K>();
 
   useEffect(() => {

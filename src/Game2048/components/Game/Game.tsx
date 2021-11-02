@@ -1,6 +1,8 @@
 import { useGame } from './hooks/useGame';
 import { useThrottledCallback } from 'use-debounce';
-import { animationDuration, Board, tileCount } from '../Board';
+// import { Board, tileCount } from '';
+import { Board, tileCountInRow } from './Board';
+import { animationDuration } from './Tile';
 import { useEffect } from 'react';
 
 export const Game = () => {
@@ -39,5 +41,5 @@ export const Game = () => {
     };
   }, [throttleHandleKeyDown]);
 
-  return <Board tiles={tiles} tileCountPerRow={tileCount} />;
+  return <Board tiles={tiles} tileCountInRow={tileCountInRow} />;
 };

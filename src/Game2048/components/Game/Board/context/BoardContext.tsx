@@ -1,24 +1,24 @@
 import { createContext } from 'react';
-import { tileCount as defaultTileCount } from '../index';
+import { tileCountInRow as defaultTileCount } from '../styles/Board';
 
 export const BoardContext = createContext({
   containerWidth: 0,
-  tileCount: defaultTileCount,
+  tileCountInRow: defaultTileCount,
 });
 
 type Props = {
   containerWidth: number;
-  tileCount: number;
+  tileCountInRow: number;
   children: any;
 };
 
 export const BoardProvider = ({
   children,
   containerWidth = 0,
-  tileCount = defaultTileCount,
+  tileCountInRow = defaultTileCount,
 }: Props) => {
   return (
-    <BoardContext.Provider value={{ containerWidth, tileCount }}>
+    <BoardContext.Provider value={{ containerWidth, tileCountInRow }}>
       {children}
     </BoardContext.Provider>
   );

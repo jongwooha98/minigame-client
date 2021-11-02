@@ -1,12 +1,8 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react';
-import {
-  animationDuration,
-  tileCount as tileCountPerRow,
-} from '../../../Board';
-import { TileMeta } from '../../../Tile';
+import { animationDuration, TileData } from 'Game2048/components/Game/Tile';
 import { useIds } from '../useIds';
 import { GameReducer, initialState } from './reducer';
-
+import { tileCountInRow } from '../../Board';
 export const useGame = () => {
   const isInitialRender = useRef(true);
   const [nextId] = useIds();
@@ -16,55 +12,53 @@ export const useGame = () => {
   const { tiles, byIds, hasChanged, inMotion } = state;
 
   const createTile = useCallback(
-    ({ position, value }: Partial<TileMeta>) => {
+    ({ coordinate, value }: Partial<TileData>) => {
       const tile = {
         id: nextId(),
-        position,
+        coordinate,
         value,
-      } as TileMeta;
+      } as TileData;
       dispatch({ type: 'CREATE_TILE', tile });
     },
     [nextId]
   );
 
-  const mergeTile = (source: TileMeta, destination: TileMeta) => {
+  const mergeTile = (source: TileData, destination: TileData) => {
     dispatch({ type: 'MERGE_TILE', source, destination });
   };
 
-  const throttleMergeTile = (source: TileMeta, destination: TileMeta) => {
+  const throttleMergeTile = (source: TileData, destination: TileData) => {
     setTimeout(() => mergeTile(source, destination), animationDuration);
   };
 
-  const updateTile = (tile: TileMeta) => {
+  const updateTile = (tile: TileData) => {
     dispatch({ type: 'UPDATE_TILE', tile });
   };
 
-  const didTileMove = (source: TileMeta, destination: TileMeta) => {
-    const hasXChanged = source.position[0] !== destination.position[0];
-    const hasYChanged = source.position[1] !== destination.position[1];
+  const didTileMove = (source: TileData, destination: TileData) => {
+    const hasXChanged = source.coordinate[0] !== destination.coordinate[0];
+    const hasYChanged = source.coordinate[1] !== destination.coordinate[1];
     return hasXChanged || hasYChanged;
   };
 
   const retrieveTileMap = useCallback(() => {
-    const tileMap = new Array(tileCountPerRow * tileCountPerRow).fill(
-      0
-    ) as number[];
+    const tileMap = new Array(16).fill(0) as number[];
 
     byIds.forEach((id) => {
-      const { position } = tiles[id];
-      const index = positionToIndex(position);
+      const { coordinate } = tiles[id];
+      const index = coordinateToIndex(coordinate);
       tileMap[index] = id;
     });
 
     return tileMap;
   }, [byIds, tiles]);
 
-  const findEmptyTiles = useCallback(() => {
+  const findEmptyCells = useCallback(() => {
     const tileMap = retrieveTileMap();
 
     const emptyTiles = tileMap.reduce((result, tileId, index) => {
       if (tileId === 0) {
-        return [...result, indexToPosition(index) as [number, number]];
+        return [...result, indexToCoordinate(index) as [number, number]];
       }
       return result;
     }, [] as [number, number][]);
@@ -72,11 +66,11 @@ export const useGame = () => {
   }, [retrieveTileMap]);
 
   const generateRandomTile = useCallback(() => {
-    const emptyTiles = findEmptyTiles();
+    const emptyCells = findEmptyCells();
 
-    if (emptyTiles.length > 0) {
-      const index = Math.floor(Math.random() * emptyTiles.length);
-      const position = emptyTiles[index];
+    if (emptyCells.length > 0) {
+      const index = Math.floor(Math.random() * emptyCells.length);
+      const coordinate = emptyCells[index];
       // 10percent change of generating 4 as new tile instead of 2
       let random = Math.random();
       let randomValue: number;
@@ -85,18 +79,18 @@ export const useGame = () => {
       } else {
         randomValue = 2;
       }
-      createTile({ position, value: randomValue });
+      createTile({ coordinate, value: randomValue });
     }
-  }, [createTile, findEmptyTiles]);
+  }, [createTile, findEmptyCells]);
 
-  // convert position: [number,number] to index: number
-  const positionToIndex = (position: [number, number]) => {
-    return position[1] * tileCountPerRow + position[0];
+  // convert coordinate: [number,number] to index: number
+  const coordinateToIndex = (coordinate: [number, number]) => {
+    return coordinate[1] * tileCountInRow + coordinate[0];
   };
   // convert index: number to position: [number,number] on grid
-  const indexToPosition = (index: number) => {
-    const x = index % tileCountPerRow;
-    const y = Math.floor(index / tileCountPerRow);
+  const indexToCoordinate = (index: number) => {
+    const x = index % tileCountInRow;
+    const y = Math.floor(index / tileCountInRow);
     return [x, y];
   };
 
@@ -114,12 +108,12 @@ export const useGame = () => {
   ) => {
     dispatch({ type: 'START_MOVE' });
 
-    const maxIndex = tileCountPerRow - 1;
+    const maxIndex = tileCountInRow - 1;
 
-    for (let rowIndex = 0; rowIndex < tileCountPerRow; rowIndex++) {
+    for (let rowIndex = 0; rowIndex < tileCountInRow; rowIndex++) {
       const availableTileIds = retrieveTileIdsPerRow(rowIndex);
 
-      let previousTile: TileMeta | undefined;
+      let previousTile: TileData | undefined;
       let mergedTilesCount = 0;
 
       availableTileIds.forEach((tileId, nonEmptyTileIndex) => {
@@ -131,9 +125,9 @@ export const useGame = () => {
         ) {
           const tile = {
             ...currentTile,
-            position: previousTile.position,
+            coordinate: previousTile.coordinate,
             mergeWith: previousTile.id,
-          } as TileMeta;
+          } as TileData;
 
           throttleMergeTile(tile, previousTile);
           previousTile = undefined;
@@ -143,7 +137,7 @@ export const useGame = () => {
 
         const tile = {
           ...currentTile,
-          position: indexToPosition(
+          coordinate: indexToCoordinate(
             calculateFirstFreeIndex(
               rowIndex,
               nonEmptyTileIndex,
@@ -151,7 +145,7 @@ export const useGame = () => {
               maxIndex
             )
           ),
-        } as TileMeta;
+        } as TileData;
 
         previousTile = tile;
 
@@ -169,10 +163,10 @@ export const useGame = () => {
       const tileMap = retrieveTileMap();
 
       const tileIdsInRow = [
-        tileMap[rowIndex * tileCountPerRow + 0],
-        tileMap[rowIndex * tileCountPerRow + 1],
-        tileMap[rowIndex * tileCountPerRow + 2],
-        tileMap[rowIndex * tileCountPerRow + 3],
+        tileMap[rowIndex * tileCountInRow + 0],
+        tileMap[rowIndex * tileCountInRow + 1],
+        tileMap[rowIndex * tileCountInRow + 2],
+        tileMap[rowIndex * tileCountInRow + 3],
       ];
 
       const nonEmptyTiles = tileIdsInRow.filter((id) => id !== 0);
@@ -185,7 +179,7 @@ export const useGame = () => {
       numberOfMerges: number,
       _: number
     ) => {
-      return tileIndex * tileCountPerRow + tileInRowIndex - numberOfMerges;
+      return tileIndex * tileCountInRow + tileInRowIndex - numberOfMerges;
     };
 
     return move.bind(this, retrieveTileIdsByRow, calculateFirstFreeIndex);
@@ -196,10 +190,10 @@ export const useGame = () => {
       const tileMap = retrieveTileMap();
 
       const tileIdsInRow = [
-        tileMap[rowIndex * tileCountPerRow + 0],
-        tileMap[rowIndex * tileCountPerRow + 1],
-        tileMap[rowIndex * tileCountPerRow + 2],
-        tileMap[rowIndex * tileCountPerRow + 3],
+        tileMap[rowIndex * tileCountInRow + 0],
+        tileMap[rowIndex * tileCountInRow + 1],
+        tileMap[rowIndex * tileCountInRow + 2],
+        tileMap[rowIndex * tileCountInRow + 3],
       ];
 
       const nonEmptyTiles = tileIdsInRow.filter((id) => id !== 0);
@@ -213,7 +207,7 @@ export const useGame = () => {
       maxIndexInRow: number
     ) => {
       return (
-        tileIndex * tileCountPerRow +
+        tileIndex * tileCountInRow +
         maxIndexInRow +
         numberOfMerges -
         tileInRowIndex
@@ -228,10 +222,10 @@ export const useGame = () => {
       const tileMap = retrieveTileMap();
 
       const tileIdsInColumn = [
-        tileMap[columnIndex + tileCountPerRow * 0],
-        tileMap[columnIndex + tileCountPerRow * 1],
-        tileMap[columnIndex + tileCountPerRow * 2],
-        tileMap[columnIndex + tileCountPerRow * 3],
+        tileMap[columnIndex + tileCountInRow * 0],
+        tileMap[columnIndex + tileCountInRow * 1],
+        tileMap[columnIndex + tileCountInRow * 2],
+        tileMap[columnIndex + tileCountInRow * 3],
       ];
 
       const nonEmptyTiles = tileIdsInColumn.filter((id) => id !== 0);
@@ -244,7 +238,7 @@ export const useGame = () => {
       numberOfMerges: number,
       _: number
     ) => {
-      return tileIndex + tileCountPerRow * (tileInColumnIndex - numberOfMerges);
+      return tileIndex + tileCountInRow * (tileInColumnIndex - numberOfMerges);
     };
 
     return move.bind(this, retrieveTileIdsByColumn, calculateFirstFreeIndex);
@@ -255,10 +249,10 @@ export const useGame = () => {
       const tileMap = retrieveTileMap();
 
       const tileIdsInColumn = [
-        tileMap[columnIndex + tileCountPerRow * 0],
-        tileMap[columnIndex + tileCountPerRow * 1],
-        tileMap[columnIndex + tileCountPerRow * 2],
-        tileMap[columnIndex + tileCountPerRow * 3],
+        tileMap[columnIndex + tileCountInRow * 0],
+        tileMap[columnIndex + tileCountInRow * 1],
+        tileMap[columnIndex + tileCountInRow * 2],
+        tileMap[columnIndex + tileCountInRow * 3],
       ];
 
       const nonEmptyTiles = tileIdsInColumn.filter((id) => id !== 0);
@@ -273,7 +267,7 @@ export const useGame = () => {
     ) => {
       return (
         tileIndex +
-        tileCountPerRow * (maxIndexInColumn - tileInColumnIndex + howManyMerges)
+        tileCountInRow * (maxIndexInColumn - tileInColumnIndex + howManyMerges)
       );
     };
 
@@ -282,8 +276,8 @@ export const useGame = () => {
 
   useEffect(() => {
     if (isInitialRender.current) {
-      createTile({ position: [0, 1], value: 2 });
-      createTile({ position: [0, 2], value: 2 });
+      createTile({ coordinate: [0, 1], value: 2 });
+      createTile({ coordinate: [0, 2], value: 2 });
       isInitialRender.current = false;
       return;
     }
@@ -300,7 +294,7 @@ export const useGame = () => {
   const moveDown = moveDownFactory();
 
   return [tileList, moveLeft, moveRight, moveUp, moveDown] as [
-    TileMeta[],
+    TileData[],
     () => void,
     () => void,
     () => void,

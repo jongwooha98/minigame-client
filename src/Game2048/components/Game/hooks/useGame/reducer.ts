@@ -1,8 +1,8 @@
-import { TileMeta } from '../../../Tile';
+import { TileData } from '../../Tile';
 
 type State = {
   tiles: {
-    [id: number]: TileMeta;
+    [id: number]: TileData;
   };
   inMotion: boolean;
   hasChanged: boolean;
@@ -17,9 +17,9 @@ export const initialState: State = {
 };
 
 type Action =
-  | { type: 'CREATE_TILE'; tile: TileMeta }
-  | { type: 'UPDATE_TILE'; tile: TileMeta }
-  | { type: 'MERGE_TILE'; source: TileMeta; destination: TileMeta }
+  | { type: 'CREATE_TILE'; tile: TileData }
+  | { type: 'UPDATE_TILE'; tile: TileData }
+  | { type: 'MERGE_TILE'; source: TileData; destination: TileData }
   | { type: 'START_MOVE' }
   | { type: 'END_MOVE' };
 
@@ -57,7 +57,7 @@ export const GameReducer = (state: State, action: Action) => {
           [action.destination.id]: {
             id: action.destination.id,
             value: action.source.value + action.destination.value,
-            position: action.destination.position,
+            coordinate: action.destination.coordinate,
           },
         },
         byIds: state.byIds.filter((id) => id !== action.source.id),
